@@ -18,6 +18,7 @@ public class MonitoringService
     public SensorSnapshot GetCurrentSnapshot()
     {
         CpuMetrics cpu = _cpuMonitoringService.GetCpuMetrics();
+        IReadOnlyList<FanInfo> fans = _cpuMonitoringService.GetFanReadings();
         GpuMetrics gpu = _gpuMonitoringService.GetGpuMetrics();
         double memoryUsedGb = 0;
         double memoryTotalGb = 0;
@@ -33,6 +34,7 @@ public class MonitoringService
             Timestamp = DateTime.Now,
             Cpu = cpu,
             Gpu = gpu,
+            Fans = fans,
             MemoryUsedGB = memoryUsedGb,
             MemoryTotalGB = memoryTotalGb
         };

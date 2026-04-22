@@ -6217,11 +6217,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\DynoTune.csproj",
+      "projectUniqueName": "c:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\DynoTune.csproj",
       "projectName": "DynoTune",
-      "projectPath": "C:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\DynoTune.csproj",
+      "projectPath": "c:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\DynoTune.csproj",
       "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\obj\\",
+      "outputPath": "c:\\Users\\Admin\\source\\repos\\DynoTune\\DynoTune\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

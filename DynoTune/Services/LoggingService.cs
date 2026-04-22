@@ -25,7 +25,12 @@ public class LoggingService
 
     public LogRecord CreateRecordFromSnapshot(SensorSnapshot snapshot, string activeProfile)
     {
-        return new LogRecord
+        return CreateRecordFromSnapshot(snapshot, activeProfile, classification: null);
+    }
+
+    public LogRecord CreateRecordFromSnapshot(SensorSnapshot snapshot, string activeProfile, ClassificationResult? classification)
+    {
+        var record = new LogRecord
         {
             Timestamp = snapshot.Timestamp,
             ActiveProfile = string.IsNullOrWhiteSpace(activeProfile) ? "Default" : activeProfile,
@@ -40,11 +45,21 @@ public class LoggingService
             GpuMemoryClockMHz = snapshot.Gpu.MemoryClockMHz,
             GpuPowerW = snapshot.Gpu.PowerW,
             GpuFanRpm = snapshot.Gpu.FanRpm,
+            GpuVramUsageMb = snapshot.Gpu.VramUsageMb,
             MemoryUsedGB = snapshot.MemoryUsedGB,
             MemoryTotalGB = snapshot.MemoryTotalGB,
             SystemPowerW = snapshot.SystemPowerW,
             AmbientTemperatureC = snapshot.AmbientTemperatureC
         };
+
+        if (classification is not null)
+        {
+            record.WorkloadType = classification.WorkloadType;
+            record.CoarseWorkloadClass = classification.CoarseWorkloadClass;
+            record.ClassificationReason = classification.Reason;
+        }
+
+        return record;
     }
 
     public LogRecord CaptureCurrentRecord(string activeProfile)
@@ -68,12 +83,15 @@ public class LoggingService
     public async Task SaveToCsvAsync(string filePath)
     {
         StringBuilder csv = new();
-        csv.AppendLine("Timestamp,ActiveProfile,CpuUsagePercent,CpuTemperatureC,CpuClockMHz,CpuPowerW,GpuName,GpuUsagePercent,GpuTemperatureC,GpuCoreClockMHz,GpuMemoryClockMHz,GpuPowerW,GpuFanRpm,MemoryUsedGB,MemoryTotalGB,SystemPowerW,AmbientTemperatureC");
+        csv.AppendLine("Timestamp,ActiveProfile,WorkloadType,CoarseWorkloadClass,ClassificationReason,CpuUsagePercent,CpuTemperatureC,CpuClockMHz,CpuPowerW,GpuName,GpuUsagePercent,GpuTemperatureC,GpuCoreClockMHz,GpuMemoryClockMHz,GpuPowerW,GpuFanRpm,GpuVramUsageMb,MemoryUsedGB,MemoryTotalGB,SystemPowerW,AmbientTemperatureC");
 
         foreach (LogRecord record in _records)
         {
             csv.Append(record.Timestamp.ToString("O", CultureInfo.InvariantCulture)).Append(',');
             csv.Append(EscapeCsv(record.ActiveProfile)).Append(',');
+            csv.Append(EscapeCsv(record.WorkloadType.ToString())).Append(',');
+            csv.Append(EscapeCsv(record.CoarseWorkloadClass.ToString())).Append(',');
+            csv.Append(EscapeCsv(record.ClassificationReason)).Append(',');
             csv.Append(record.CpuUsagePercent.ToString(CultureInfo.InvariantCulture)).Append(',');
             csv.Append(record.CpuTemperatureC?.ToString(CultureInfo.InvariantCulture) ?? string.Empty).Append(',');
             csv.Append(record.CpuClockMHz.ToString(CultureInfo.InvariantCulture)).Append(',');
@@ -85,6 +103,7 @@ public class LoggingService
             csv.Append(record.GpuMemoryClockMHz.ToString(CultureInfo.InvariantCulture)).Append(',');
             csv.Append(record.GpuPowerW.ToString(CultureInfo.InvariantCulture)).Append(',');
             csv.Append(record.GpuFanRpm.ToString(CultureInfo.InvariantCulture)).Append(',');
+            csv.Append(record.GpuVramUsageMb?.ToString(CultureInfo.InvariantCulture) ?? string.Empty).Append(',');
             csv.Append(record.MemoryUsedGB.ToString(CultureInfo.InvariantCulture)).Append(',');
             csv.Append(record.MemoryTotalGB.ToString(CultureInfo.InvariantCulture)).Append(',');
             csv.Append(record.SystemPowerW?.ToString(CultureInfo.InvariantCulture) ?? string.Empty).Append(',');

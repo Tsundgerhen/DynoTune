@@ -18,6 +18,12 @@ public class LibreHardwareMonitorService
     private readonly Computer _computer;
     private readonly UpdateVisitor _updateVisitor = new();
     private bool _hasDumpedSensorInventory;
+    private bool _hasLoggedFallbackSummary;
+
+    // Guards against calling Accept() twice in the same timer tick.
+    private DateTime _lastUpdateTime = DateTime.MinValue;
+
+    private int? _lastLoggedFanCount;
 
     public LibreHardwareMonitorService()
     {
@@ -43,9 +49,105 @@ public class LibreHardwareMonitorService
         _computer.Close();
     }
 
+    /// <summary>
+    /// Reads all fan sensors from motherboard, SuperIO, Embedded Controller, and CPU nodes.
+    /// Returns ALL detected fan sensor slots — including those at 0 RPM (passive/off fans).
+    /// Call after GetCpuMetrics() — reuses the same Accept() within 500 ms.
+    /// </summary>
+    public IReadOnlyList<FanInfo> GetFanReadings()
+    {
+        EnsureUpdated();
+
+        var fans = new List<FanInfo>();
+        foreach (IHardware hardware in _computer.Hardware)
+        {
+            CollectFansRecursive(hardware, fans);
+        }
+
+        // Sort: spinning fans first, then passive/off ones.
+        fans.Sort((a, b) => b.Rpm.CompareTo(a.Rpm));
+
+        if (_lastLoggedFanCount != fans.Count)
+        {
+            _lastLoggedFanCount = fans.Count;
+            System.Diagnostics.Debug.WriteLine(
+                $"[Fans] {fans.Count} sensor(s) detected: " +
+                string.Join(", ", fans.ConvertAll(f => $"{f.Name}={f.Rpm:F0}RPM")));
+        }
+
+        return fans;
+    }
+
+    private static void CollectFansRecursive(IHardware hardware, List<FanInfo> fans)
+    {
+        var rpmSensors = new Dictionary<string, double?>(StringComparer.OrdinalIgnoreCase);
+        var pctSensors = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (ISensor sensor in hardware.Sensors)
+        {
+            string name = sensor.Name ?? string.Empty;
+
+            if (sensor.SensorType == SensorType.Fan)
+            {
+                // Always add fan sensors — even null/0 means the slot is wired or passive.
+                rpmSensors[name] = sensor.Value.HasValue ? (double?)sensor.Value.Value : null;
+            }
+            else if (sensor.SensorType == SensorType.Control && sensor.Value.HasValue)
+            {
+                pctSensors[name] = sensor.Value.Value;
+            }
+        }
+
+        foreach (var (name, rpm) in rpmSensors)
+        {
+            // Try to find a matching Control sensor (names often differ, e.g. "Fan #1" vs "Fan Control #1").
+            double? pct = null;
+            if (pctSensors.TryGetValue(name, out double exactPct))
+            {
+                pct = exactPct > 0 ? exactPct : null;
+            }
+            else
+            {
+                // Fuzzy match: pick a Control sensor whose name contains the fan's index token.
+                foreach (var (ctrlName, ctrlPct) in pctSensors)
+                {
+                    if (ctrlPct > 0 && (ctrlName.Contains(name, StringComparison.OrdinalIgnoreCase)
+                                       || name.Contains(ctrlName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        pct = ctrlPct;
+                        break;
+                    }
+                }
+            }
+
+            fans.Add(new FanInfo
+            {
+                Name = name,
+                Rpm = rpm ?? 0.0,
+                SpeedPercent = pct
+            });
+        }
+
+        foreach (IHardware sub in hardware.SubHardware)
+        {
+            CollectFansRecursive(sub, fans);
+        }
+    }
+
+    // Calls Accept() at most once per 500 ms so that GetCpuMetrics() and
+    // GetFanReadings() called back-to-back don't double-poll the hardware.
+    private void EnsureUpdated()
+    {
+        if ((DateTime.UtcNow - _lastUpdateTime).TotalMilliseconds > 500)
+        {
+            _computer.Accept(_updateVisitor);
+            _lastUpdateTime = DateTime.UtcNow;
+        }
+    }
+
     public CpuMetrics GetCpuMetrics()
     {
-        _computer.Accept(_updateVisitor);
+        EnsureUpdated();
 
         double usagePercent = 0;
         double clockMHz = 0;
@@ -59,6 +161,8 @@ public class LibreHardwareMonitorService
         int clockCount = 0;
         bool packagePowerFound = false;
         bool anyPowerFound = false;
+        double? cpuFanRpm = null;
+        double? cpuFanPercent = null;
 
         foreach (IHardware hardware in _computer.Hardware)
         {
@@ -138,27 +242,85 @@ public class LibreHardwareMonitorService
 
                 ProcessHardwareSensorsRecursive(hardware, ProcessCpuSensor);
             }
+
+            if (cpuFanRpm is null)
+            {
+                TryCollectCpuFanRecursive(hardware, ref cpuFanRpm, ref cpuFanPercent);
+            }
         }
+
+        string clockSource = "Unavailable";
+        string tempSource = "Unavailable";
+        string powerSource = "Unavailable";
+        string fanSource = "Unavailable";
 
         if (!anyPowerFound)
         {
             packagePowerW = null;
             powerW = null;
         }
+        else
+        {
+            powerSource = "LHM";
+        }
 
         if (clockCount > 0)
         {
             clockMHz = clockSum / clockCount;
+            clockSource = "LHM";
         }
 
         // WMI fallback for clock: Win32_Processor.CurrentClockSpeed works without admin.
         if (clockMHz <= 0)
         {
             clockMHz = TryGetCpuClockMhzViaWmi();
+            if (clockMHz > 0)
+            {
+                clockSource = "WMI";
+            }
         }
 
         // Temperature uses a separate multi-hardware scan with fallback priority.
         double? temperatureC = FindBestCpuTemperature();
+        if (temperatureC.HasValue)
+        {
+            tempSource = "LHM";
+        }
+        else if (TryGetCpuTemperatureViaWmi(out double wmiTemp))
+        {
+            temperatureC = wmiTemp;
+            tempSource = "WMI";
+        }
+
+        if (cpuFanRpm.HasValue)
+        {
+            fanSource = "LHM";
+        }
+
+        var notes = new List<string>();
+        if (temperatureC is null)
+        {
+            notes.Add("CPU temperature unsupported");
+        }
+        if (clockMHz <= 0)
+        {
+            notes.Add("CPU clock unsupported");
+        }
+        if (powerW is null && packagePowerW is null)
+        {
+            notes.Add("CPU power unsupported");
+        }
+        if (cpuFanRpm is null)
+        {
+            notes.Add("CPU fan unsupported");
+        }
+
+        if (!_hasLoggedFallbackSummary)
+        {
+            _hasLoggedFallbackSummary = true;
+            System.Diagnostics.Debug.WriteLine(
+                $"[CPU] src temp={tempSource}, clock={clockSource}, power={powerSource}, fan={fanSource}");
+        }
 
         return new CpuMetrics
         {
@@ -167,6 +329,17 @@ public class LibreHardwareMonitorService
             ClockMHz = clockMHz,
             PowerW = powerW,
             PackagePowerW = packagePowerW,
+            CpuFanRpm = cpuFanRpm,
+            CpuFanPercent = cpuFanPercent,
+            TemperatureSource = tempSource,
+            ClockSource = clockSource,
+            PowerSource = powerSource,
+            FanSource = fanSource,
+            HasTemperature = temperatureC.HasValue,
+            HasClock = clockMHz > 0,
+            HasPower = powerW.HasValue || packagePowerW.HasValue,
+            HasCpuFan = cpuFanRpm.HasValue,
+            AvailabilityNote = string.Join("; ", notes),
             IsThermallyThrottling = thermalThrottle,
             IsPowerThrottling = powerThrottle
         };
@@ -281,6 +454,65 @@ public class LibreHardwareMonitorService
         catch
         {
             return 0;
+        }
+    }
+
+    private static bool TryGetCpuTemperatureViaWmi(out double temperatureC)
+    {
+        temperatureC = 0;
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                @"root\WMI",
+                "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                if (obj["CurrentTemperature"] is uint raw && raw > 0)
+                {
+                    // WMI ACPI value is tenths of Kelvin.
+                    double c = raw / 10.0 - 273.15;
+                    if (c >= 10 && c <= 115)
+                    {
+                        temperatureC = c;
+                        return true;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore - fallback is best-effort only.
+        }
+
+        return false;
+    }
+
+    private static void TryCollectCpuFanRecursive(IHardware hardware, ref double? rpm, ref double? percent)
+    {
+        foreach (ISensor sensor in hardware.Sensors)
+        {
+            string sensorName = sensor.Name ?? string.Empty;
+            bool isCpuLike = sensorName.Contains("CPU", StringComparison.OrdinalIgnoreCase)
+                             || sensorName.Contains("Processor", StringComparison.OrdinalIgnoreCase);
+            if (!isCpuLike)
+            {
+                continue;
+            }
+
+            if (sensor.SensorType == SensorType.Fan && sensor.Value.HasValue && sensor.Value.Value > 0)
+            {
+                rpm = sensor.Value.Value;
+            }
+            else if (sensor.SensorType == SensorType.Control && sensor.Value.HasValue && sensor.Value.Value > 0)
+            {
+                percent = sensor.Value.Value;
+            }
+        }
+
+        foreach (IHardware sub in hardware.SubHardware)
+        {
+            TryCollectCpuFanRecursive(sub, ref rpm, ref percent);
         }
     }
 

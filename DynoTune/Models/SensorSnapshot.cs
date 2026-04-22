@@ -9,4 +9,7 @@ public class SensorSnapshot
     public double MemoryTotalGB { get; set; }
     public double? SystemPowerW { get; set; }
     public double? AmbientTemperatureC { get; set; }
+
+    /// <summary>All fan sensors detected by LibreHardwareMonitor (CPU fan, chassis fans, etc.).</summary>
+    public IReadOnlyList<FanInfo> Fans { get; set; } = Array.Empty<FanInfo>();
 }

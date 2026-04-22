@@ -8,7 +8,11 @@ public class ExperimentRunResult
 
     public string WorkloadName { get; set; } = string.Empty;
     public WorkloadClass WorkloadClass { get; set; } = WorkloadClass.Mixed;
+    public WorkloadType DominantWorkloadType { get; set; } = WorkloadType.Unknown;
     public ExperimentProfileType ProfileType { get; set; } = ExperimentProfileType.Baseline;
+
+    /// <summary>Optional: WHEA / GPU reset counts observed from the System log during the run window.</summary>
+    public StabilitySnapshot? SessionStability { get; set; }
 
     public PerformanceMetrics Performance { get; set; } = new();
     public EnergyMetrics Energy { get; set; } = new();

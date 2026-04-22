@@ -5,6 +5,10 @@ public class LogRecord
     public DateTime Timestamp { get; set; }
     public string ActiveProfile { get; set; } = "Default";
 
+    public WorkloadType WorkloadType { get; set; } = WorkloadType.Unknown;
+    public WorkloadClass CoarseWorkloadClass { get; set; } = WorkloadClass.Mixed;
+    public string ClassificationReason { get; set; } = string.Empty;
+
     public double CpuUsagePercent { get; set; }
     public double? CpuTemperatureC { get; set; }
     public double CpuClockMHz { get; set; }
@@ -17,6 +21,7 @@ public class LogRecord
     public double GpuMemoryClockMHz { get; set; }
     public double GpuPowerW { get; set; }
     public int GpuFanRpm { get; set; }
+    public double? GpuVramUsageMb { get; set; }
 
     public double MemoryUsedGB { get; set; }
     public double MemoryTotalGB { get; set; }

@@ -5,6 +5,11 @@ public class TuningProfile
     public string Name { get; set; } = string.Empty;
     public WorkloadClass TargetWorkload { get; set; } = WorkloadClass.Mixed;
 
+    /// <summary>Optional fine-grained match for <see cref="WorkloadType"/>; when null, only <see cref="TargetWorkload"/> is used.</summary>
+    public WorkloadType? TargetWorkloadType { get; set; }
+
+    public WindowsPowerPlanKind PreferredPowerPlan { get; set; } = WindowsPowerPlanKind.Balanced;
+
     public int? GpuPowerLimitPercent { get; set; }
     public int? GpuMaxClockMHz { get; set; }
     public int? GpuVoltageMv { get; set; }

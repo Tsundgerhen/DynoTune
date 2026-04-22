@@ -6,9 +6,320 @@
     xmlns:local="using:DynoTune.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Background="Transparent">
 
-    <Grid>
+    <ScrollViewer>
+        <StackPanel Padding="20,12,20,20" Spacing="12">
 
-    </Grid>
+            <!-- ═══ Header row ═══════════════════════════════════════════════ -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Live Monitor" Style="{StaticResource TitleTextBlockStyle}"/>
+                    <TextBlock x:Name="TimestampText" Text="--"
+                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border x:Name="WorkloadBadgeBorder" CornerRadius="12" Padding="10,4"
+                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}">
+                        <TextBlock x:Name="WorkloadBadgeText" Text="Idle"
+                                   Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold"/>
+                    </Border>
+                    <Border CornerRadius="12" Padding="10,4"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <TextBlock x:Name="PowerPlanBadgeText" Text="Balanced"
+                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Elevation: LHM needs admin for CPU temp/clocks/power and motherboard fans -->
+            <Border x:Name="ElevationBanner" CornerRadius="8" Padding="12,8" Margin="0,4,0,0"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <TextBlock x:Name="ElevationBannerText" TextWrapping="Wrap"
+                           Style="{StaticResource CaptionTextBlockStyle}"/>
+            </Border>
+
+            <!-- ═══ Top metric cards (CPU · GPU · System) ═══════════════════ -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ── CPU card ─────────────────────────────────────── -->
+                <Border Grid.Column="0" CornerRadius="12" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+
+                        <TextBlock Text="CPU" Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"/>
+
+                        <TextBlock x:Name="CpuUsageText" Text="0 %"
+                                   FontSize="40" FontWeight="Bold" LineHeight="44"/>
+
+                        <ProgressBar x:Name="CpuUsageBar" Maximum="100" Height="6" CornerRadius="3"
+                                     Foreground="{ThemeResource AccentAAFillColorDefaultBrush}"/>
+
+                        <!-- Temp / Power -->
+                        <Grid ColumnSpacing="8" Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="TEMP" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuTempText" Text="--"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuPowerText" Text="-- W"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Clock / Package power -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="CLOCK" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuClockText" Text="-- MHz"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="PKG POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuPackagePowerText" Text="-- W"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- CPU Fan -->
+                        <StackPanel>
+                            <TextBlock Text="CPU FAN" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:Name="CpuFanText" Text="--"/>
+                        </StackPanel>
+
+                        <!-- Throttle warning -->
+                        <TextBlock x:Name="CpuThrottleText" Text="" Foreground="Red"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   FontWeight="SemiBold" Visibility="Collapsed"/>
+
+                        <!-- Sparkline -->
+                        <TextBlock Text="LAST 60 s" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Opacity="0.35" Margin="0,4,0,0"/>
+                        <Canvas x:Name="CpuSparklineCanvas" Height="64"
+                                HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── GPU card ─────────────────────────────────────── -->
+                <Border Grid.Column="1" CornerRadius="12" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+
+                        <TextBlock x:Name="GpuNameText" Text="GPU"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <TextBlock x:Name="GpuUsageText" Text="0 %"
+                                   FontSize="40" FontWeight="Bold" LineHeight="44"/>
+
+                        <ProgressBar x:Name="GpuUsageBar" Maximum="100" Height="6" CornerRadius="3"
+                                     Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+
+                        <!-- Temp / Power -->
+                        <Grid ColumnSpacing="8" Margin="0,4,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="TEMP" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuTempText" Text="--"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuPowerText" Text="-- W"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Core clock / Memory clock -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="CORE CLK" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuCoreClockText" Text="-- MHz"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="MEM CLK" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuMemClockText" Text="-- MHz"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Fan RPM / Fan % -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="GPU FAN RPM" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuFanText" Text="-- RPM"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="GPU FAN %" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuFanPercentText" Text="-- %"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- VRAM / Voltage -->
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="VRAM" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuVramText" Text="-- MB"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="VOLTAGE" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuVoltageText" Text="-- mV"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Throttle warning -->
+                        <TextBlock x:Name="GpuThrottleText" Text="" Foreground="Red"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   FontWeight="SemiBold" Visibility="Collapsed"/>
+
+                        <!-- Sparkline -->
+                        <TextBlock Text="LAST 60 s" Style="{StaticResource CaptionTextBlockStyle}"
+                                   Opacity="0.35" Margin="0,4,0,0"/>
+                        <Canvas x:Name="GpuSparklineCanvas" Height="64"
+                                HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ── System card ──────────────────────────────────── -->
+                <Border Grid.Column="2" CornerRadius="12" Padding="16"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="10">
+
+                        <TextBlock Text="System" Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"/>
+
+                        <TextBlock x:Name="RamUsageText" Text="-- / -- GB"
+                                   FontSize="28" FontWeight="Bold" LineHeight="32"/>
+
+                        <ProgressBar x:Name="RamUsageBar" Maximum="100" Height="6" CornerRadius="3"
+                                     Foreground="{ThemeResource SystemFillColorCautionBrush}"/>
+
+                        <StackPanel Margin="0,4,0,0">
+                            <TextBlock Text="SYSTEM POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:Name="SystemPowerText" Text="-- W"/>
+                        </StackPanel>
+
+                        <Rectangle Height="1" Margin="0,2"
+                                   Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+
+                        <StackPanel>
+                            <TextBlock Text="WORKLOAD" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:Name="WorkloadTypeText" Text="--" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="WorkloadReasonText" Text="--"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock Text="POWER PLAN" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:Name="PowerPlanText" Text="--"/>
+                        </StackPanel>
+
+                        <Rectangle Height="1" Margin="0,2"
+                                   Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="WHEA ERRORS" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="WheaCountText" Text="0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="GPU RESETS" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="GpuResetCountText" Text="0"/>
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- ═══ Fans & Cooling card ══════════════════════════════════════ -->
+            <Border CornerRadius="12" Padding="16,14"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="10">
+
+                    <TextBlock Text="Fans &amp; Cooling"
+                               Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"/>
+
+                    <!-- Fan rows built dynamically in code-behind -->
+                    <TextBlock x:Name="FansEmptyText"
+                               Text="No fan sensors in LibreHardwareMonitor yet."
+                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"
+                               TextWrapping="Wrap"/>
+
+                    <StackPanel x:Name="FansPanel" Spacing="0"/>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ═══ Stability / session footer bar ══════════════════════════ -->
+            <Border CornerRadius="12" Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon x:Name="StabilityIcon" Glyph="&#xE73E;"
+                                  FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                        <TextBlock x:Name="StabilityStatusText" Text="Session stable"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1" x:Name="StabilityDetailText"
+                               Text="No WHEA errors · No GPU resets"
+                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"
+                               VerticalAlignment="Center" Margin="16,0,0,0"/>
+
+                    <TextBlock Grid.Column="2" x:Name="SessionDurationText" Text="Session: --"
+                               Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"
+                               VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
 </Page>
