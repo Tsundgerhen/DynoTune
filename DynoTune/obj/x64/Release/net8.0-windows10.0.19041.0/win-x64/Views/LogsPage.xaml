@@ -3,13 +3,151 @@
     x:Class="DynoTune.Views.LogsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:DynoTune.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Background="Transparent">
 
-    <Grid>
+    <Grid Padding="16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
+        <TextBlock Text="Logs" Style="{StaticResource TitleTextBlockStyle}"/>
+
+        <Grid Grid.Row="1" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:ConnectionId='4' x:Name="SearchBox" PlaceholderText="Search profile/reason/detail..."
+                     Text="{Binding SearchText, Mode=TwoWay}"/>
+            <ComboBox Grid.Column="1" Width="150"
+                      ItemsSource="{Binding WorkloadOptions}"
+                      SelectedItem="{Binding SelectedWorkload, Mode=TwoWay}"/>
+            <ComboBox Grid.Column="2" Width="130"
+                      ItemsSource="{Binding DangerOptions}"
+                      SelectedItem="{Binding SelectedDanger, Mode=TwoWay}"/>
+            <Button x:ConnectionId='5' Grid.Column="3" Content="Refresh"                            />
+            <Button x:ConnectionId='6' Grid.Column="4" Content="Export CSV"                           />
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ListView ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord, Mode=TwoWay}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnSpacing="10" Padding="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Timestamp}" Grid.Column="0"/>
+                            <TextBlock Text="{Binding ActiveProfile}" Grid.Column="1"/>
+                            <TextBlock Text="{Binding WorkloadType}" Grid.Column="2"/>
+                            <TextBlock Text="{Binding DangerLevel}" Grid.Column="3"/>
+                            <TextBlock Text="{Binding DangerReasonDetail}" Grid.Column="4" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <Border Grid.Column="1" Padding="12" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Selected Log Detail" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+
+                        <TextBlock Text="Time" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.Timestamp}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Profile" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.ActiveProfile}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Workload" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.WorkloadType}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Coarse Class" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.CoarseWorkloadClass}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Classification Reason" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.ClassificationReason}" TextWrapping="Wrap"/>
+
+                        <Rectangle Height="1" Margin="0,4" Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <TextBlock Text="CPU" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock Text="CPU Usage %" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.CpuUsagePercent}" TextWrapping="Wrap"/>
+                        <TextBlock Text="CPU Temp °C" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.CpuTemperatureC}" TextWrapping="Wrap"/>
+                        <TextBlock Text="CPU Clock MHz" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.CpuClockMHz}" TextWrapping="Wrap"/>
+                        <TextBlock Text="CPU Power W" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.CpuPowerW}" TextWrapping="Wrap"/>
+
+                        <Rectangle Height="1" Margin="0,4" Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <TextBlock Text="GPU" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock Text="GPU Name" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuName}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Usage %" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuUsagePercent}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Temp °C" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuTemperatureC}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Core Clock MHz" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuCoreClockMHz}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Memory Clock MHz" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuMemoryClockMHz}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Power W" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuPowerW}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU Fan RPM" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuFanRpm}" TextWrapping="Wrap"/>
+                        <TextBlock Text="GPU VRAM MB" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.GpuVramUsageMb}" TextWrapping="Wrap"/>
+
+                        <Rectangle Height="1" Margin="0,4" Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <TextBlock Text="System" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock Text="Memory Used GB" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.MemoryUsedGB}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Memory Total GB" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.MemoryTotalGB}" TextWrapping="Wrap"/>
+                        <TextBlock Text="System Power W" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.SystemPowerW}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Ambient Temp °C" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.AmbientTemperatureC}" TextWrapping="Wrap"/>
+
+                        <Rectangle Height="1" Margin="0,4" Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <TextBlock Text="Danger" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock Text="Danger" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.DangerLevel}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Reason" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.DangerReason}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Detail" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.DangerReasonDetail}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Rollback Applied" Opacity="0.6"/>
+                        <TextBlock Text="{Binding SelectedRecord.DangerRollbackApplied}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding StatusText}" Opacity="0.7"/>
+            <Button x:ConnectionId='2' Grid.Column="1" Content="Open Log Folder"                               />
+        </Grid>
     </Grid>
 </Page>
 

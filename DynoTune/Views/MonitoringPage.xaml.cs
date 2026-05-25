@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using DynoTune.Models;
+using DynoTune.Services;
 using DynoTune.ViewModels;
 
 namespace DynoTune.Views
@@ -19,19 +20,37 @@ namespace DynoTune.Views
     {
         private static MonitoringViewModel VM => App.LiveData;
 
-        // Rolling 60-sample history for sparklines.
-        private readonly Queue<double> _cpuHistory = new();
-        private readonly Queue<double> _gpuHistory = new();
+        // Static so history survives page re-creation on navigation.
+        private static readonly Queue<(double Value, bool IsOptimizing)> _cpuHistory = new();
+        private static readonly Queue<(double Value, bool IsOptimizing)> _gpuHistory = new();
         private const int HistoryCapacity = 60;
 
-        // Tracks how many fan rows are in FansPanel so we only rebuild on change.
-        private int _lastFanCount = -1;
+        // Static so the fan-row rebuild guard survives page re-creation on navigation.
+        private static int _lastFanCount = -1;
 
-        // Sparkline colours.
-        private static readonly Windows.UI.Color CpuColor =
+        // ── Smooth animation ──────────────────────────────────────────────────
+        private readonly DispatcherTimer _animTimer = new() { Interval = TimeSpan.FromMilliseconds(60) };
+        private bool _snapOnNextFrame = true;
+
+        // Target values — written at 1 Hz from the VM on each Refreshed event.
+        private double _tCpuUsage;
+        private double _tGpuUsage, _tGpuTemp, _tGpuHotspot, _tGpuPower;
+        private double _tGpuCoreClock, _tGpuMemClock, _tGpuFanRpm, _tGpuFanPct, _tGpuVoltage;
+        private double _tMemUsedGb, _tMemTotalGb, _tSysPower;
+
+        // Display values — interpolated toward targets each animation frame.
+        private double _dCpuUsage;
+        private double _dGpuUsage, _dGpuTemp, _dGpuHotspot, _dGpuPower;
+        private double _dGpuCoreClock, _dGpuMemClock, _dGpuFanRpm, _dGpuFanPct, _dGpuVoltage;
+        private double _dMemUsedGb, _dMemTotalGb, _dSysPower;
+
+        // Sparkline colours: active = optimization running, inactive = stopped.
+        private static readonly Windows.UI.Color CpuActiveColor =
             Windows.UI.Color.FromArgb(255, 77, 130, 245);
-        private static readonly Windows.UI.Color GpuColor =
+        private static readonly Windows.UI.Color GpuActiveColor =
             Windows.UI.Color.FromArgb(255, 52, 199, 89);
+        private static readonly Windows.UI.Color InactiveColor =
+            Windows.UI.Color.FromArgb(255, 230, 65, 50);
 
         public MonitoringPage()
         {
@@ -42,17 +61,43 @@ namespace DynoTune.Views
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            // Pre-populate from DB if queues are empty (fresh app start / first load).
+            if (_cpuHistory.Count == 0 && App.TelemetryRepo != null)
+            {
+                foreach (TelemetrySample s in App.TelemetryRepo.GetRecent(HistoryCapacity))
+                {
+                    EnqueueHistory(_cpuHistory, s.CpuUsagePct, s.IsOptimizing);
+                    EnqueueHistory(_gpuHistory, s.GpuUsagePct, s.IsOptimizing);
+                }
+            }
+
             VM.Refreshed += OnVmRefreshed;
+            _animTimer.Tick += OnAnimTick;
+            _animTimer.Start();
+            CpuSparklineCanvas.SizeChanged += OnSparklineCanvasSizeChanged;
+            GpuSparklineCanvas.SizeChanged += OnSparklineCanvasSizeChanged;
             OnVmRefreshed(this, EventArgs.Empty);
         }
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
             VM.Refreshed -= OnVmRefreshed;
+            _animTimer.Stop();
+            _animTimer.Tick -= OnAnimTick;
+            CpuSparklineCanvas.SizeChanged -= OnSparklineCanvasSizeChanged;
+            GpuSparklineCanvas.SizeChanged -= OnSparklineCanvasSizeChanged;
+            _snapOnNextFrame = true;
+        }
+
+        private void OnSparklineCanvasSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.NewSize.Width > 0)
+                RedrawSparklines();
         }
 
         private void OnVmRefreshed(object? sender, EventArgs e)
         {
+            UpdateTargets();
             UpdateElevationBanner();
             UpdateCpuCard();
             UpdateGpuCard();
@@ -88,26 +133,29 @@ namespace DynoTune.Views
 
         private void UpdateCpuCard()
         {
-            CpuUsageText.Text = $"{VM.CpuUsagePercent:F0} %";
-            CpuUsageBar.Value = VM.CpuUsagePercent;
+            if (!string.IsNullOrEmpty(VM.CpuName))
+            {
+                CpuNameText.Text = VM.CpuName;
+                CpuNameText.Visibility = Visibility.Visible;
+            }
 
             CpuTempText.Text = VM.CpuHasTemperature && VM.CpuTemperatureC.HasValue
                 ? FormatWithSource($"{VM.CpuTemperatureC.Value:F0} °C", VM.CpuTemperatureSource)
-                : "Unsupported on this board";
+                : UnavailableText();
 
             CpuPowerText.Text = VM.CpuPowerW.HasValue
                 ? FormatWithSource($"{VM.CpuPowerW.Value:F0} W", VM.CpuPowerSource)
-                : "Unsupported on this board";
+                : UnavailableText();
 
             CpuPackagePowerText.Text = VM.CpuPackagePowerW.HasValue
                 ? FormatWithSource($"{VM.CpuPackagePowerW.Value:F0} W", VM.CpuPowerSource)
-                : "Unsupported on this board";
+                : UnavailableText();
 
             CpuClockText.Text = VM.CpuHasClock && VM.CpuClockMHz > 0
                 ? FormatWithSource($"{VM.CpuClockMHz:F0} MHz", VM.CpuClockSource)
-                : "Unsupported on this board";
+                : UnavailableText();
 
-            string cpuFanDisplay = "Unsupported on this board";
+            string cpuFanDisplay = UnavailableText();
             if (VM.CpuHasFan && VM.CpuFanRpm.HasValue)
             {
                 cpuFanDisplay = VM.CpuFanPercent.HasValue
@@ -139,7 +187,30 @@ namespace DynoTune.Views
             CpuUsageBar.Foreground = VM.CpuUsagePercent >= 90
                 ? new SolidColorBrush(Colors.OrangeRed)
                 : (SolidColorBrush)Application.Current.Resources["AccentAAFillColorDefaultBrush"];
+
+            CpuMinFreqText.Text = VM.CpuMinFrequencyPercent.HasValue
+                ? $"{VM.CpuMinFrequencyPercent.Value} %"
+                : "--";
+            CpuMaxFreqText.Text = VM.CpuMaxFrequencyPercent.HasValue
+                ? $"{VM.CpuMaxFrequencyPercent.Value} %"
+                : "--";
+            CpuBoostModeText.Text = VM.CpuBoostMode.HasValue
+                ? FormatBoostMode(VM.CpuBoostMode.Value)
+                : "--";
         }
+
+        private static string FormatBoostMode(ProcessorBoostMode mode) => mode switch
+        {
+            ProcessorBoostMode.Disabled             => "Disabled",
+            ProcessorBoostMode.Enabled              => "Enabled",
+            ProcessorBoostMode.Aggressive           => "Aggressive",
+            ProcessorBoostMode.EfficientEnabled     => "Efficient Enabled",
+            ProcessorBoostMode.EfficientAggressive  => "Efficient Aggressive",
+            _                                       => mode.ToString()
+        };
+
+        private string UnavailableText() =>
+            VM.RunningElevated ? "Unsupported on this board" : "Not elevated";
 
         private static string FormatWithSource(string valueText, string source)
         {
@@ -160,31 +231,6 @@ namespace DynoTune.Views
                 GpuNameText.Text = VM.GpuName;
             }
 
-            GpuUsageText.Text = $"{VM.GpuUsagePercent:F0} %";
-            GpuUsageBar.Value = VM.GpuUsagePercent;
-
-            // Temperature — show hotspot in parentheses when available.
-            string tempDisplay = $"{VM.GpuTemperatureC:F0} °C";
-            if (VM.GpuHotspotTemperatureC.HasValue)
-            {
-                tempDisplay += $"  (hs {VM.GpuHotspotTemperatureC.Value:F0})";
-            }
-            GpuTempText.Text = tempDisplay;
-
-            GpuPowerText.Text = $"{VM.GpuPowerW:F0} W";
-
-            GpuCoreClockText.Text = VM.GpuCoreClock > 0
-                ? $"{VM.GpuCoreClock:F0} MHz" : "--";
-
-            GpuMemClockText.Text = VM.GpuMemoryClock > 0
-                ? $"{VM.GpuMemoryClock:F0} MHz" : "--";
-
-            GpuFanText.Text = VM.GpuFanRpm > 0
-                ? $"{VM.GpuFanRpm} RPM" : "--";
-
-            GpuFanPercentText.Text = VM.GpuFanPercent.HasValue
-                ? $"{VM.GpuFanPercent.Value:F0} %" : "--";
-
             GpuVramText.Text = VM.GpuVramUsageMb.HasValue
                 ? $"{VM.GpuVramUsageMb.Value:F0} MB" : "--";
 
@@ -204,14 +250,6 @@ namespace DynoTune.Views
 
         private void UpdateSystemCard()
         {
-            double ramUsed = VM.MemoryUsedGB;
-            double ramTotal = VM.MemoryTotalGB;
-            RamUsageText.Text = $"{ramUsed:F1} / {ramTotal:F1} GB";
-            RamUsageBar.Value = ramTotal > 0.1 ? ramUsed / ramTotal * 100.0 : 0;
-
-            SystemPowerText.Text = VM.SystemPowerW.HasValue
-                ? $"{VM.SystemPowerW.Value:F0} W" : "--";
-
             WorkloadTypeText.Text = VM.WorkloadTypeName;
             WorkloadReasonText.Text = VM.ClassificationReason;
             PowerPlanText.Text = VM.PowerPlanLabel;
@@ -353,7 +391,7 @@ namespace DynoTune.Views
 
         private void UpdateStabilityBar()
         {
-            bool stable = VM.WheaErrorCount == 0 && VM.GpuResetCount == 0;
+            bool stable = VM.DangerLevel == DangerLevel.Safe;
 
             StabilityStatusText.Text = stable ? "Session stable" : "Issues detected";
             StabilityIcon.Glyph = stable ? "\uE73E" : "\uE7BA";
@@ -361,9 +399,16 @@ namespace DynoTune.Views
                 ? new SolidColorBrush(Colors.MediumSeaGreen)
                 : new SolidColorBrush(Colors.OrangeRed);
 
-            StabilityDetailText.Text = stable
-                ? "No WHEA errors · No GPU resets"
-                : $"WHEA events: {VM.WheaErrorCount}  ·  GPU resets: {VM.GpuResetCount}";
+            if (stable)
+            {
+                StabilityDetailText.Text = "No WHEA errors · No GPU resets";
+            }
+            else
+            {
+                string rollbackText = VM.DangerRollbackApplied ? " · Safe rollback applied" : string.Empty;
+                StabilityDetailText.Text =
+                    $"{VM.DangerReason}: {VM.DangerReasonDetail}{rollbackText}";
+            }
 
             TimeSpan elapsed = DateTime.UtcNow - VM.SessionStartUtc;
             SessionDurationText.Text = elapsed.TotalHours >= 1
@@ -375,80 +420,181 @@ namespace DynoTune.Views
 
         private void UpdateSparklines()
         {
-            EnqueueHistory(_cpuHistory, VM.CpuUsagePercent);
-            EnqueueHistory(_gpuHistory, VM.GpuUsagePercent);
-
-            DrawSparkline(CpuSparklineCanvas, _cpuHistory, CpuColor, maxValue: 100.0);
-            DrawSparkline(GpuSparklineCanvas, _gpuHistory, GpuColor, maxValue: 100.0);
+            bool isOptimizing = App.OptimizationService?.SessionState.IsRunning ?? false;
+            EnqueueHistory(_cpuHistory, VM.CpuUsagePercent, isOptimizing);
+            EnqueueHistory(_gpuHistory, VM.GpuUsagePercent, isOptimizing);
+            RedrawSparklines();
         }
 
-        private static void EnqueueHistory(Queue<double> queue, double value)
+        private void RedrawSparklines()
         {
-            queue.Enqueue(value);
+            DrawSparkline(CpuSparklineCanvas, _cpuHistory, CpuActiveColor, InactiveColor, maxValue: 100.0);
+            DrawSparkline(GpuSparklineCanvas, _gpuHistory, GpuActiveColor, InactiveColor, maxValue: 100.0);
+        }
+
+        private static void EnqueueHistory(Queue<(double Value, bool IsOptimizing)> queue, double value, bool isOptimizing)
+        {
+            queue.Enqueue((value, isOptimizing));
             while (queue.Count > HistoryCapacity)
             {
                 queue.Dequeue();
             }
         }
 
+        // ── Smooth animation methods ──────────────────────────────────────────
+
+        private void UpdateTargets()
+        {
+            _tCpuUsage = VM.CpuUsagePercent;
+
+            _tGpuUsage    = VM.GpuUsagePercent;
+            _tGpuTemp     = VM.GpuTemperatureC;
+            _tGpuHotspot  = VM.GpuHotspotTemperatureC ?? _tGpuHotspot;
+            _tGpuPower    = VM.GpuPowerW;
+            _tGpuCoreClock = VM.GpuCoreClock > 0 ? VM.GpuCoreClock : _tGpuCoreClock;
+            _tGpuMemClock  = VM.GpuMemoryClock > 0 ? VM.GpuMemoryClock : _tGpuMemClock;
+            _tGpuFanRpm    = VM.GpuFanRpm > 0 ? VM.GpuFanRpm : _tGpuFanRpm;
+            _tGpuFanPct    = VM.GpuFanPercent ?? _tGpuFanPct;
+            _tGpuVoltage   = VM.GpuVoltageMv ?? _tGpuVoltage;
+
+            _tMemUsedGb  = VM.MemoryUsedGB;
+            _tMemTotalGb = VM.MemoryTotalGB;
+            _tSysPower   = VM.SystemPowerW ?? _tSysPower;
+
+            if (_snapOnNextFrame)
+            {
+                _dCpuUsage = _tCpuUsage;
+                _dGpuUsage = _tGpuUsage; _dGpuTemp = _tGpuTemp; _dGpuHotspot = _tGpuHotspot;
+                _dGpuPower = _tGpuPower; _dGpuCoreClock = _tGpuCoreClock; _dGpuMemClock = _tGpuMemClock;
+                _dGpuFanRpm = _tGpuFanRpm; _dGpuFanPct = _tGpuFanPct; _dGpuVoltage = _tGpuVoltage;
+                _dMemUsedGb = _tMemUsedGb; _dMemTotalGb = _tMemTotalGb; _dSysPower = _tSysPower;
+                _snapOnNextFrame = false;
+            }
+        }
+
+        private void OnAnimTick(object? sender, object e)
+        {
+            const double a = 0.20;
+            _dCpuUsage     += (_tCpuUsage     - _dCpuUsage)     * a;
+            _dGpuUsage     += (_tGpuUsage     - _dGpuUsage)     * a;
+            _dGpuTemp      += (_tGpuTemp      - _dGpuTemp)      * a;
+            _dGpuHotspot   += (_tGpuHotspot   - _dGpuHotspot)   * a;
+            _dGpuPower     += (_tGpuPower     - _dGpuPower)     * a;
+            _dGpuCoreClock += (_tGpuCoreClock - _dGpuCoreClock) * a;
+            _dGpuMemClock  += (_tGpuMemClock  - _dGpuMemClock)  * a;
+            _dGpuFanRpm    += (_tGpuFanRpm    - _dGpuFanRpm)    * a;
+            _dGpuFanPct    += (_tGpuFanPct    - _dGpuFanPct)    * a;
+            _dGpuVoltage   += (_tGpuVoltage   - _dGpuVoltage)   * a;
+            _dMemUsedGb    += (_tMemUsedGb    - _dMemUsedGb)    * a;
+            _dMemTotalGb   += (_tMemTotalGb   - _dMemTotalGb)   * a;
+            _dSysPower     += (_tSysPower     - _dSysPower)     * a;
+            DrawAnimatedMetrics();
+        }
+
+        private void DrawAnimatedMetrics()
+        {
+            // CPU
+            CpuUsageText.Text = $"{_dCpuUsage:F0} %";
+            CpuUsageBar.Value = _dCpuUsage;
+
+            // GPU
+            GpuUsageText.Text = $"{_dGpuUsage:F0} %";
+            GpuUsageBar.Value = _dGpuUsage;
+
+            string tempDisplay = $"{_dGpuTemp:F0} °C";
+            if (VM.GpuHotspotTemperatureC.HasValue)
+                tempDisplay += $"  (hs {_dGpuHotspot:F0})";
+            GpuTempText.Text = tempDisplay;
+
+            GpuPowerText.Text      = $"{_dGpuPower:F0} W";
+            GpuCoreClockText.Text  = _dGpuCoreClock > 1 ? $"{_dGpuCoreClock:F0} MHz" : "--";
+            GpuMemClockText.Text   = _dGpuMemClock  > 1 ? $"{_dGpuMemClock:F0} MHz"  : "--";
+            GpuFanText.Text        = _dGpuFanRpm    > 1 ? $"{_dGpuFanRpm:F0} RPM"    : "--";
+            GpuFanPercentText.Text = VM.GpuFanPercent.HasValue ? $"{_dGpuFanPct:F0} %"  : "--";
+            GpuVoltageText.Text    = VM.GpuVoltageMv.HasValue  ? $"{_dGpuVoltage:F0} mV" : "--";
+
+            // System
+            double memPct = _dMemTotalGb > 0.1 ? _dMemUsedGb / _dMemTotalGb * 100.0 : 0;
+            RamUsageText.Text    = $"{_dMemUsedGb:F1} / {_dMemTotalGb:F1} GB";
+            RamUsageBar.Value    = memPct;
+            SystemPowerText.Text = VM.SystemPowerW.HasValue ? $"{_dSysPower:F0} W" : "--";
+        }
+
         private static void DrawSparkline(
             Canvas canvas,
-            Queue<double> history,
-            Windows.UI.Color lineColor,
+            Queue<(double Value, bool IsOptimizing)> history,
+            Windows.UI.Color activeColor,
+            Windows.UI.Color inactiveColor,
             double maxValue)
         {
             canvas.Children.Clear();
 
             if (history.Count < 2)
-            {
                 return;
-            }
 
             double w = canvas.ActualWidth > 0 ? canvas.ActualWidth : 300;
             double h = canvas.ActualHeight > 0 ? canvas.ActualHeight : 64;
             double pad = 3.0;
 
-            double[] values = history.ToArray();
-            int count = values.Length;
+            var items = history.ToArray();
+            int count = items.Length;
             double xStep = w / Math.Max(count - 1, 1);
 
-            var fillColor = Windows.UI.Color.FromArgb(35, lineColor.R, lineColor.G, lineColor.B);
-
-            var polygon = new Polygon { Fill = new SolidColorBrush(fillColor), StrokeThickness = 0 };
-            var polyline = new Polyline
-            {
-                Stroke = new SolidColorBrush(lineColor),
-                StrokeThickness = 1.8,
-                StrokeLineJoin = PenLineJoin.Round,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round
-            };
-
-            polygon.Points.Add(new Point(0, h));
-
+            // Precompute screen coordinates for every sample
+            var pts = new (Point Pt, bool IsOptimizing)[count];
             for (int i = 0; i < count; i++)
             {
                 double x = i * xStep;
-                double normalized = Math.Clamp(values[i] / maxValue, 0.0, 1.0);
+                double normalized = Math.Clamp(items[i].Value / maxValue, 0.0, 1.0);
                 double y = h - pad - normalized * (h - pad * 2);
-
-                var pt = new Point(x, y);
-                polyline.Points.Add(pt);
-                polygon.Points.Add(pt);
+                pts[i] = (new Point(x, y), items[i].IsOptimizing);
             }
 
+            // Unified fill polygon (dim inactive color as background tint)
+            var fillColor = Windows.UI.Color.FromArgb(25, inactiveColor.R, inactiveColor.G, inactiveColor.B);
+            var polygon = new Polygon { Fill = new SolidColorBrush(fillColor), StrokeThickness = 0 };
+            polygon.Points.Add(new Point(0, h));
+            foreach (var (pt, _) in pts)
+                polygon.Points.Add(pt);
             polygon.Points.Add(new Point((count - 1) * xStep, h));
-
             canvas.Children.Add(polygon);
-            canvas.Children.Add(polyline);
 
-            // 50 % guide line.
+            // Segmented polylines — one per consecutive run of the same optimization state
+            int seg = 0;
+            while (seg < count)
+            {
+                bool state = pts[seg].IsOptimizing;
+                var polyline = new Polyline
+                {
+                    Stroke = new SolidColorBrush(state ? activeColor : inactiveColor),
+                    StrokeThickness = 1.8,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round
+                };
+
+                int end = seg;
+                while (end < count && pts[end].IsOptimizing == state)
+                    end++;
+
+                for (int i = seg; i < end; i++)
+                    polyline.Points.Add(pts[i].Pt);
+
+                // Overlap one point into the next segment for visual continuity at transitions
+                if (end < count)
+                    polyline.Points.Add(pts[end].Pt);
+
+                canvas.Children.Add(polyline);
+                seg = end;
+            }
+
+            // 50 % guide line
             double midY = h - pad - 0.5 * (h - pad * 2);
             canvas.Children.Add(new Line
             {
                 X1 = 0, Y1 = midY, X2 = w, Y2 = midY,
                 Stroke = new SolidColorBrush(
-                    Windows.UI.Color.FromArgb(25, lineColor.R, lineColor.G, lineColor.B)),
+                    Windows.UI.Color.FromArgb(25, activeColor.R, activeColor.G, activeColor.B)),
                 StrokeThickness = 1,
                 StrokeDashArray = new DoubleCollection { 4, 4 }
             });

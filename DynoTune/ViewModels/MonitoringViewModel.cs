@@ -12,6 +12,7 @@ namespace DynoTune.ViewModels;
 public class MonitoringViewModel
 {
     // ── CPU ──────────────────────────────────────────────────────────────────
+    public string CpuName { get; private set; } = string.Empty;
     public double CpuUsagePercent { get; private set; }
     public double? CpuTemperatureC { get; private set; }
     public double CpuClockMHz { get; private set; }
@@ -29,6 +30,11 @@ public class MonitoringViewModel
     public bool CpuHasFan { get; private set; }
     public string CpuAvailabilityNote { get; private set; } = string.Empty;
     public bool CpuIsThrottling { get; private set; }
+
+    // CPU Windows power management (from active power scheme, refreshed every 10 ticks)
+    public int? CpuMinFrequencyPercent { get; private set; }
+    public int? CpuMaxFrequencyPercent { get; private set; }
+    public ProcessorBoostMode? CpuBoostMode { get; private set; }
 
     // ── GPU ──────────────────────────────────────────────────────────────────
     public string GpuName { get; private set; } = string.Empty;
@@ -63,6 +69,10 @@ public class MonitoringViewModel
     // ── Stability ────────────────────────────────────────────────────────────
     public int WheaErrorCount { get; private set; }
     public int GpuResetCount { get; private set; }
+    public DangerLevel DangerLevel { get; private set; } = DangerLevel.Safe;
+    public DangerReason DangerReason { get; private set; } = DangerReason.None;
+    public string DangerReasonDetail { get; private set; } = string.Empty;
+    public bool DangerRollbackApplied { get; private set; }
 
     // ── Session ──────────────────────────────────────────────────────────────
     public DateTime SessionStartUtc { get; } = DateTime.UtcNow;
@@ -77,7 +87,8 @@ public class MonitoringViewModel
     {
         RunningElevated = IsProcessElevated();
 
-        CpuUsagePercent = snapshot.Cpu.UsagePercent;
+        CpuName = snapshot.Cpu.Name;
+        CpuUsagePercent = Math.Clamp(snapshot.Cpu.UsagePercent, 0.0, 100.0);
         CpuTemperatureC = snapshot.Cpu.TemperatureC;
         CpuClockMHz = snapshot.Cpu.ClockMHz;
         CpuPowerW = snapshot.Cpu.PowerW;
@@ -96,7 +107,7 @@ public class MonitoringViewModel
         CpuIsThrottling = snapshot.Cpu.IsThermallyThrottling || snapshot.Cpu.IsPowerThrottling;
 
         GpuName = snapshot.Gpu.Name;
-        GpuUsagePercent = snapshot.Gpu.UsagePercent;
+        GpuUsagePercent = Math.Clamp(snapshot.Gpu.UsagePercent, 0.0, 100.0);
         GpuTemperatureC = snapshot.Gpu.TemperatureC;
         GpuHotspotTemperatureC = snapshot.Gpu.HotspotTemperatureC;
         GpuCoreClock = snapshot.Gpu.CoreClockMHz;
@@ -127,6 +138,23 @@ public class MonitoringViewModel
     {
         WheaErrorCount = wheaErrors;
         GpuResetCount = gpuResets;
+        Refreshed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void UpdateCpuPowerSettings(int? minFreqPercent, int? maxFreqPercent, ProcessorBoostMode? boostMode)
+    {
+        CpuMinFrequencyPercent = minFreqPercent;
+        CpuMaxFrequencyPercent = maxFreqPercent;
+        CpuBoostMode = boostMode;
+        Refreshed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void UpdateDanger(DangerState danger)
+    {
+        DangerLevel = danger.Level;
+        DangerReason = danger.Reason;
+        DangerReasonDetail = danger.ReasonDetail;
+        DangerRollbackApplied = danger.AutoRollbackApplied;
         Refreshed?.Invoke(this, EventArgs.Empty);
     }
 

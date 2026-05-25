@@ -45,6 +45,11 @@
                         <FontIcon Glyph="&#xE713;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Tag="demo" Content="Performance">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8F9;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <NavigationView.FooterMenuItems>

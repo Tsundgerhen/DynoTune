@@ -1,31 +1,42 @@
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using System.Runtime.Versioning;
+using DynoTune.ViewModels;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace DynoTune.Views
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
+    [SupportedOSPlatform("windows10.0.19041.0")]
     public sealed partial class LogsPage : Page
     {
+        private readonly LogsPageViewModel _vm = new();
+
         public LogsPage()
         {
             InitializeComponent();
+            DataContext = _vm;
+            Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.Refresh();
+        }
+
+        private void RefreshButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.Refresh();
+        }
+
+        private async void ExportButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            await _vm.ExportNowAsync();
+        }
+
+        private void OpenFolderButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.OpenLatestLogFolder();
         }
     }
 }

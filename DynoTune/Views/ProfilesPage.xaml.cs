@@ -1,31 +1,57 @@
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
+using System.Runtime.Versioning;
+using DynoTune.ViewModels;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace DynoTune.Views
 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
+    [SupportedOSPlatform("windows10.0.19041.0")]
     public sealed partial class ProfilesPage : Page
     {
+        private readonly ProfilesPageViewModel _vm = new();
+
         public ProfilesPage()
         {
             InitializeComponent();
+            DataContext = _vm;
+            Loaded += OnLoaded;
+        }
+
+        private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.Refresh();
+        }
+
+        private void RefreshButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.Refresh();
+        }
+
+        private void SetActiveButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.SetActiveSelected();
+        }
+
+        private void ApplyButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.ApplySelected();
+        }
+
+        private void DuplicateButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.DuplicateSelected();
+        }
+
+        private void DeleteButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.DeleteSelected();
+        }
+
+        private void SafeFallbackButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            _vm.ApplySafeFallback();
         }
     }
 }

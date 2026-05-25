@@ -63,6 +63,8 @@
                     <StackPanel Spacing="8">
 
                         <TextBlock Text="CPU" Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock x:Name="CpuNameText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis" Visibility="Collapsed"/>
 
                         <TextBlock x:Name="CpuUsageText" Text="0 %"
                                    FontSize="40" FontWeight="Bold" LineHeight="44"/>
@@ -106,6 +108,28 @@
                         <StackPanel>
                             <TextBlock Text="CPU FAN" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
                             <TextBlock x:Name="CpuFanText" Text="--"/>
+                        </StackPanel>
+
+                        <!-- CPU Windows power management -->
+                        <Rectangle Height="1" Margin="0,2"
+                                   Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="MIN FREQ %" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuMinFreqText" Text="--"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="MAX FREQ %" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:Name="CpuMaxFreqText" Text="--"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel>
+                            <TextBlock Text="BOOST MODE" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:Name="CpuBoostModeText" Text="--"/>
                         </StackPanel>
 
                         <!-- Throttle warning -->

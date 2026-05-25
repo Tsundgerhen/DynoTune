@@ -163,12 +163,15 @@ public class LibreHardwareMonitorService
         bool anyPowerFound = false;
         double? cpuFanRpm = null;
         double? cpuFanPercent = null;
+        string cpuName = string.Empty;
 
         foreach (IHardware hardware in _computer.Hardware)
         {
             // Only collect non-temperature metrics from CPU node.
             if (hardware.HardwareType == HardwareType.Cpu)
             {
+                if (string.IsNullOrEmpty(cpuName))
+                    cpuName = hardware.Name ?? string.Empty;
                 void ProcessCpuSensor(ISensor sensor)
                 {
                     if (sensor.Value is null)
@@ -324,6 +327,7 @@ public class LibreHardwareMonitorService
 
         return new CpuMetrics
         {
+            Name = cpuName,
             UsagePercent = usagePercent,
             TemperatureC = temperatureC,
             ClockMHz = clockMHz,

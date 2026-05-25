@@ -1,6 +1,7 @@
 App.xbf
 MainWindow.xbf
 Views\DashboardPage.xbf
+Views\DemoPage.xbf
 Views\LogsPage.xbf
 Views\MonitoringPage.xbf
 Views\ProfilesPage.xbf

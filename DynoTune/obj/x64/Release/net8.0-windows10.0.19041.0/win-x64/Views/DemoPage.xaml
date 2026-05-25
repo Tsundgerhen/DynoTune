@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="DynoTune.Views.DemoPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <Grid Padding="16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Power &amp; Temperature Management" Style="{StaticResource TitleTextBlockStyle}"/>
+
+        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                       Text="Power Management"
+                       Style="{StaticResource BodyStrongTextBlockStyle}"/>
+
+            <!-- GPU Power -->
+            <Border Grid.Row="1" Grid.Column="0" Padding="12" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="6">
+                    <Grid>
+                        <TextBlock Text="GPU Power (W)" Opacity="0.7" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock x:ConnectionId='9' x:Name="GpuPowerCurrentValue" HorizontalAlignment="Right"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0" Height="140" VerticalAlignment="Top">
+                            <TextBlock Text="150" VerticalAlignment="Top"    FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="75"  VerticalAlignment="Center" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="0"   VerticalAlignment="Bottom" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                        </Grid>
+                        <Canvas x:ConnectionId='8' Grid.Column="1" x:Name="GpuPowerCanvas" Height="140" HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- CPU Power -->
+            <Border Grid.Row="1" Grid.Column="1" Padding="12" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="6">
+                    <Grid>
+                        <TextBlock Text="CPU Power (W)" Opacity="0.7" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock x:ConnectionId='7' x:Name="CpuPowerCurrentValue" HorizontalAlignment="Right"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0" Height="140" VerticalAlignment="Top">
+                            <TextBlock Text="120" VerticalAlignment="Top"    FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="60"  VerticalAlignment="Center" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="0"   VerticalAlignment="Bottom" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                        </Grid>
+                        <Canvas x:ConnectionId='6' Grid.Column="1" x:Name="CpuPowerCanvas" Height="140" HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="2"
+                       Text="Temperature Management"
+                       Style="{StaticResource BodyStrongTextBlockStyle}"/>
+
+            <!-- GPU Temp -->
+            <Border Grid.Row="3" Grid.Column="0" Padding="12" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="6">
+                    <Grid>
+                        <TextBlock Text="GPU Temperature (°C)" Opacity="0.7" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock x:ConnectionId='5' x:Name="GpuTempCurrentValue" HorizontalAlignment="Right"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0" Height="140" VerticalAlignment="Top">
+                            <TextBlock Text="100" VerticalAlignment="Top"    FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="50"  VerticalAlignment="Center" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="0"   VerticalAlignment="Bottom" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                        </Grid>
+                        <Canvas x:ConnectionId='4' Grid.Column="1" x:Name="GpuTempCanvas" Height="140" HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- CPU Temp -->
+            <Border Grid.Row="3" Grid.Column="1" Padding="12" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="6">
+                    <Grid>
+                        <TextBlock Text="CPU Temperature (°C)" Opacity="0.7" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock x:ConnectionId='3' x:Name="CpuTempCurrentValue" HorizontalAlignment="Right"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    </Grid>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0" Height="140" VerticalAlignment="Top">
+                            <TextBlock Text="100" VerticalAlignment="Top"    FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="50"  VerticalAlignment="Center" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                            <TextBlock Text="0"   VerticalAlignment="Bottom" FontSize="10" Opacity="0.45" HorizontalAlignment="Right" Margin="0,0,4,0"/>
+                        </Grid>
+                        <Canvas x:ConnectionId='2' Grid.Column="1" x:Name="CpuTempCanvas" Height="140" HorizontalAlignment="Stretch" Background="Transparent"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
+

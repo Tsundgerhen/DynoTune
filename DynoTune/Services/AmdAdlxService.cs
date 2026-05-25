@@ -1,3 +1,4 @@
+using System.Text;
 using DynoTune.Models;
 using LibreHardwareMonitor.Hardware;
 
@@ -21,14 +22,31 @@ public class AmdAdlxService
             return true;
         }
 
-        // Sample pattern: create ADLXHelper, then call Initialize.
-        _helper = new ADLXHelper();
-        ADLX_RESULT result = _helper.Initialize();
+        ADLX_RESULT result;
+        try
+        {
+            // Sample pattern: create ADLXHelper, then call Initialize.
+            _helper = new ADLXHelper();
+            result = _helper.Initialize();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ADLX init exception: {ex.Message}");
+            _helper = null;
+            return false;
+        }
 
         if (!_hardwareOpened)
         {
-            _computer.Open();
-            _hardwareOpened = true;
+            try
+            {
+                _computer.Open();
+                _hardwareOpened = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GPU hardware monitor open failed: {ex.Message}");
+            }
         }
 
         if (result == ADLX_RESULT.ADLX_OK)
@@ -44,15 +62,98 @@ public class AmdAdlxService
     {
         if (_helper is not null)
         {
-            // Sample pattern: terminate through the same helper instance.
-            _helper.Terminate();
+            try
+            {
+                // Sample pattern: terminate through the same helper instance.
+                _helper.Terminate();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ADLX terminate exception: {ex.Message}");
+            }
             _helper = null;
         }
 
         if (_hardwareOpened)
         {
-            _computer.Close();
+            try
+            {
+                _computer.Close();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GPU hardware monitor close failed: {ex.Message}");
+            }
             _hardwareOpened = false;
+        }
+    }
+
+    public bool TryApplyUndervoltCandidate(
+        int? gpuVoltageMv,
+        int? gpuMaxClockMHz,
+        int? gpuPowerLimitPercent,
+        out string reason)
+    {
+        try
+        {
+            if (gpuVoltageMv is null && gpuMaxClockMHz is null && gpuPowerLimitPercent is null)
+            {
+                reason = "No GPU tuning values requested.";
+                return true;
+            }
+
+            if (_helper is null)
+            {
+                reason = "ADLX helper unavailable — GPU parameters not applied.";
+                System.Diagnostics.Debug.WriteLine($"[ADLX] TryApplyUndervoltCandidate skipped: helper null. " +
+                    $"V={gpuVoltageMv} mV, Clock={gpuMaxClockMHz} MHz, PowerLimit={gpuPowerLimitPercent}%");
+                return false;
+            }
+
+            // Log all requested values for traceability.
+            System.Diagnostics.Debug.WriteLine($"[ADLX] TryApplyUndervoltCandidate requested: " +
+                $"V={gpuVoltageMv} mV, Clock={gpuMaxClockMHz} MHz, PowerLimit={gpuPowerLimitPercent}%");
+
+            bool anyApplied = false;
+            var reasonParts = new System.Text.StringBuilder();
+
+            // GPU power limit: attempt via IADLXSystem tuning services if ADLX is initialized.
+            // The ADLX C# binding does not yet expose a typed PowerTuning API in generated bindings,
+            // so this is the safe partial-apply gate: log the attempt and record partial success.
+            if (gpuPowerLimitPercent.HasValue)
+            {
+                // Safe gate: ADLX GPU tuning for power limit requires IADLXGPUTuningServices.
+                // Until the generated binding exposes a validated write path, we log the intent
+                // and report partial apply so the caller can make an informed decision.
+                System.Diagnostics.Debug.WriteLine($"[ADLX] PowerLimit={gpuPowerLimitPercent}% — write path not yet exposed in bindings (partial apply).");
+                reasonParts.Append($"PowerLimit={gpuPowerLimitPercent}% logged (binding write path pending). ");
+                anyApplied = true;
+            }
+
+            // Voltage and clock: direct write is guarded until ADLX tuning interface is validated.
+            if (gpuVoltageMv.HasValue || gpuMaxClockMHz.HasValue)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ADLX] V/Clock write path guarded. " +
+                    $"V={gpuVoltageMv} mV, Clock={gpuMaxClockMHz} MHz — not applied.");
+                reasonParts.Append($"V/Clock write guarded (safe gate). ");
+            }
+
+            if (anyApplied)
+            {
+                reason = reasonParts.ToString().TrimEnd();
+                // Return false because no actual hardware state change was made.
+                // The caller (ProfileSearchService) will reject and log accordingly.
+                return false;
+            }
+
+            reason = "No GPU parameters could be applied in this build.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            reason = $"GPU tuning apply exception: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[ADLX] TryApplyUndervoltCandidate exception: {ex}");
+            return false;
         }
     }
 

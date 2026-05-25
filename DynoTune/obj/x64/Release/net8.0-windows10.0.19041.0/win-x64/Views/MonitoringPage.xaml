@@ -21,20 +21,20 @@
 
                 <StackPanel>
                     <TextBlock Text="Live Monitor" Style="{StaticResource TitleTextBlockStyle}"/>
-                    <TextBlock x:ConnectionId='43' x:Name="TimestampText" Text="--"
+                    <TextBlock x:ConnectionId='47' x:Name="TimestampText" Text="--"
                                Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Border x:ConnectionId='40' x:Name="WorkloadBadgeBorder" CornerRadius="12" Padding="10,4"
+                    <Border x:ConnectionId='44' x:Name="WorkloadBadgeBorder" CornerRadius="12" Padding="10,4"
                             Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}">
-                        <TextBlock x:ConnectionId='42' x:Name="WorkloadBadgeText" Text="Idle"
+                        <TextBlock x:ConnectionId='46' x:Name="WorkloadBadgeText" Text="Idle"
                                    Style="{StaticResource CaptionTextBlockStyle}" FontWeight="SemiBold"/>
                     </Border>
                     <Border CornerRadius="12" Padding="10,4"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <TextBlock x:ConnectionId='41' x:Name="PowerPlanBadgeText" Text="Balanced"
+                        <TextBlock x:ConnectionId='45' x:Name="PowerPlanBadgeText" Text="Balanced"
                                    Style="{StaticResource CaptionTextBlockStyle}"/>
                     </Border>
                 </StackPanel>
@@ -44,7 +44,7 @@
             <Border x:ConnectionId='2' x:Name="ElevationBanner" CornerRadius="8" Padding="12,8" Margin="0,4,0,0"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <TextBlock x:ConnectionId='39' x:Name="ElevationBannerText" TextWrapping="Wrap"
+                <TextBlock x:ConnectionId='43' x:Name="ElevationBannerText" TextWrapping="Wrap"
                            Style="{StaticResource CaptionTextBlockStyle}"/>
             </Border>
 
@@ -63,11 +63,13 @@
                     <StackPanel Spacing="8">
 
                         <TextBlock Text="CPU" Style="{StaticResource BodyStrongTextBlockStyle}" Opacity="0.65"/>
+                        <TextBlock x:ConnectionId='30' x:Name="CpuNameText" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis" Visibility="Collapsed"/>
 
-                        <TextBlock x:ConnectionId='30' x:Name="CpuUsageText" Text="0 %"
+                        <TextBlock x:ConnectionId='31' x:Name="CpuUsageText" Text="0 %"
                                    FontSize="40" FontWeight="Bold" LineHeight="44"/>
 
-                        <ProgressBar x:ConnectionId='31' x:Name="CpuUsageBar" Maximum="100" Height="6" CornerRadius="3"
+                        <ProgressBar x:ConnectionId='32' x:Name="CpuUsageBar" Maximum="100" Height="6" CornerRadius="3"
                                      Foreground="{ThemeResource AccentAAFillColorDefaultBrush}"/>
 
                         <!-- Temp / Power -->
@@ -78,11 +80,11 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="TEMP" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock x:ConnectionId='38' x:Name="CpuTempText" Text="--"/>
+                                <TextBlock x:ConnectionId='42' x:Name="CpuTempText" Text="--"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1">
                                 <TextBlock Text="POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock x:ConnectionId='37' x:Name="CpuPowerText" Text="-- W"/>
+                                <TextBlock x:ConnectionId='41' x:Name="CpuPowerText" Text="-- W"/>
                             </StackPanel>
                         </Grid>
 
@@ -94,29 +96,51 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="CLOCK" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock x:ConnectionId='36' x:Name="CpuClockText" Text="-- MHz"/>
+                                <TextBlock x:ConnectionId='40' x:Name="CpuClockText" Text="-- MHz"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1">
                                 <TextBlock Text="PKG POWER" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                                <TextBlock x:ConnectionId='35' x:Name="CpuPackagePowerText" Text="-- W"/>
+                                <TextBlock x:ConnectionId='39' x:Name="CpuPackagePowerText" Text="-- W"/>
                             </StackPanel>
                         </Grid>
 
                         <!-- CPU Fan -->
                         <StackPanel>
                             <TextBlock Text="CPU FAN" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
-                            <TextBlock x:ConnectionId='34' x:Name="CpuFanText" Text="--"/>
+                            <TextBlock x:ConnectionId='38' x:Name="CpuFanText" Text="--"/>
+                        </StackPanel>
+
+                        <!-- CPU Windows power management -->
+                        <Rectangle Height="1" Margin="0,2"
+                                   Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="MIN FREQ %" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:ConnectionId='37' x:Name="CpuMinFreqText" Text="--"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="MAX FREQ %" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                                <TextBlock x:ConnectionId='36' x:Name="CpuMaxFreqText" Text="--"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel>
+                            <TextBlock Text="BOOST MODE" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.5"/>
+                            <TextBlock x:ConnectionId='35' x:Name="CpuBoostModeText" Text="--"/>
                         </StackPanel>
 
                         <!-- Throttle warning -->
-                        <TextBlock x:ConnectionId='32' x:Name="CpuThrottleText" Text="" Foreground="Red"
+                        <TextBlock x:ConnectionId='33' x:Name="CpuThrottleText" Text="" Foreground="Red"
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    FontWeight="SemiBold" Visibility="Collapsed"/>
 
                         <!-- Sparkline -->
                         <TextBlock Text="LAST 60 s" Style="{StaticResource CaptionTextBlockStyle}"
                                    Opacity="0.35" Margin="0,4,0,0"/>
-                        <Canvas x:ConnectionId='33' x:Name="CpuSparklineCanvas" Height="64"
+                        <Canvas x:ConnectionId='34' x:Name="CpuSparklineCanvas" Height="64"
                                 HorizontalAlignment="Stretch" Background="Transparent"/>
                     </StackPanel>
                 </Border>

@@ -3,12 +3,137 @@
     x:Class="DynoTune.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:DynoTune.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Background="Transparent"
+    Loaded="Page_Loaded">
 
-    <Grid>
+    <ScrollViewer Padding="16" VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="680" Spacing="16">
 
-    </Grid>
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}"/>
+
+            <!-- Safety Limits -->
+            <Border Padding="16" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Safety Limits" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="Applied globally — these override per-profile limits and halt tuning if exceeded."
+                               Opacity="0.6" TextWrapping="Wrap"/>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <NumberBox Header="Max CPU Temp (°C)"
+                                   Value="{Binding MaxCpuTempC, Mode=TwoWay}"
+                                   Minimum="60" Maximum="110" SmallChange="1"
+                                   SpinButtonPlacementMode="Inline"/>
+                        <NumberBox Grid.Column="1"
+                                   Header="Max GPU Temp (°C)"
+                                   Value="{Binding MaxGpuTempC, Mode=TwoWay}"
+                                   Minimum="60" Maximum="100" SmallChange="1"
+                                   SpinButtonPlacementMode="Inline"/>
+                        <NumberBox Grid.Column="2"
+                                   Header="Max GPU Hotspot (°C)"
+                                   Value="{Binding MaxGpuHotspotTempC, Mode=TwoWay}"
+                                   Minimum="70" Maximum="115" SmallChange="1"
+                                   SpinButtonPlacementMode="Inline"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Search Parameters -->
+            <Border Padding="16" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Search Parameters" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="Take effect on next search start. Active searches use the values they started with."
+                               Opacity="0.6" TextWrapping="Wrap"/>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ComboBox Header="Target Mode"
+                                  ItemsSource="{Binding TargetModeOptions}"
+                                  SelectedItem="{Binding SelectedTargetMode, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch"/>
+
+                        <NumberBox Grid.Column="1"
+                                   Header="Max Performance Loss (%)"
+                                   Value="{Binding MaxPerfLossPercent, Mode=TwoWay}"
+                                   Minimum="1" Maximum="20" SmallChange="0.5"
+                                   SpinButtonPlacementMode="Inline"/>
+                    </Grid>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <NumberBox Header="Max Search Candidates"
+                                   Value="{Binding MaxSearchCandidates, Mode=TwoWay}"
+                                   Minimum="1" Maximum="10" SmallChange="1"
+                                   SpinButtonPlacementMode="Inline"/>
+
+                        <NumberBox Grid.Column="1"
+                                   Header="Short Test Duration (s)"
+                                   Value="{Binding ShortTestDurationSec, Mode=TwoWay}"
+                                   Minimum="5" Maximum="120" SmallChange="5"
+                                   SpinButtonPlacementMode="Inline"/>
+
+                        <NumberBox Grid.Column="2"
+                                   Header="Long Test Duration (s)"
+                                   Value="{Binding LongTestDurationSec, Mode=TwoWay}"
+                                   Minimum="10" Maximum="300" SmallChange="5"
+                                   SpinButtonPlacementMode="Inline"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Sampling -->
+            <Border Padding="16" CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Sampling" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="Sampling interval controls how often hardware metrics are captured. Changes apply immediately."
+                               Opacity="0.6" TextWrapping="Wrap"/>
+
+                    <NumberBox Header="Sampling Interval (ms)"
+                               Value="{Binding SamplingIntervalMs, Mode=TwoWay}"
+                               Minimum="500" Maximum="5000" SmallChange="100"
+                               SpinButtonPlacementMode="Inline"
+                               HorizontalAlignment="Left" Width="220"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Actions -->
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="Apply" Style="{StaticResource AccentButtonStyle}"
+                        Click="ApplyButton_Click"/>
+                <Button Grid.Column="1" Content="Reset to Defaults"
+                        Click="ResetButton_Click"/>
+                <TextBlock Grid.Column="2" Text="{Binding StatusText}"
+                           Opacity="0.7" VerticalAlignment="Center" Margin="8,0,0,0"
+                           TextWrapping="Wrap"/>
+            </Grid>
+
+        </StackPanel>
+    </ScrollViewer>
 </Page>

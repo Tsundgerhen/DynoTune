@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using DynoTune.Models;
 
 namespace DynoTune.Services;
@@ -6,6 +9,7 @@ public class MonitoringService
 {
     private readonly LibreHardwareMonitorService _cpuMonitoringService;
     private readonly AmdAdlxService _gpuMonitoringService;
+    private readonly HwinfoSharedMemoryService _hwinfoService = new();
 
     public MonitoringService(
         LibreHardwareMonitorService cpuMonitoringService,
@@ -18,8 +22,15 @@ public class MonitoringService
     public SensorSnapshot GetCurrentSnapshot()
     {
         CpuMetrics cpu = _cpuMonitoringService.GetCpuMetrics();
-        IReadOnlyList<FanInfo> fans = _cpuMonitoringService.GetFanReadings();
+        var fans = new List<FanInfo>(_cpuMonitoringService.GetFanReadings());
         GpuMetrics gpu = _gpuMonitoringService.GetGpuMetrics();
+
+        if (_hwinfoService.TryGetCpuTelemetry(out HwinfoCpuTelemetry hwinfo))
+        {
+            MergeHwinfoFallback(cpu, hwinfo);
+            AppendHwinfoFans(fans, hwinfo);
+        }
+
         double memoryUsedGb = 0;
         double memoryTotalGb = 0;
 
@@ -44,6 +55,55 @@ public class MonitoringService
     public SensorSnapshot GetSnapshot()
     {
         return GetCurrentSnapshot();
+    }
+
+    private static void MergeHwinfoFallback(CpuMetrics cpu, HwinfoCpuTelemetry hwinfo)
+    {
+        if (!cpu.HasTemperature && hwinfo.HasTemperature)
+        {
+            cpu.TemperatureC = hwinfo.TemperatureC;
+            cpu.HasTemperature = true;
+            cpu.TemperatureSource = "HWiNFO";
+        }
+        if (!cpu.HasClock && hwinfo.HasClock)
+        {
+            cpu.ClockMHz = hwinfo.ClockMHz!.Value;
+            cpu.HasClock = true;
+            cpu.ClockSource = "HWiNFO";
+        }
+        if (!cpu.HasPower && hwinfo.HasPower)
+        {
+            cpu.PowerW = hwinfo.PackagePowerW;
+            cpu.PackagePowerW = hwinfo.PackagePowerW;
+            cpu.HasPower = true;
+            cpu.PowerSource = "HWiNFO";
+        }
+        if (!cpu.HasCpuFan && hwinfo.HasFan)
+        {
+            cpu.CpuFanRpm = hwinfo.CpuFanRpm;
+            cpu.CpuFanPercent = hwinfo.CpuFanPercent;
+            cpu.HasCpuFan = true;
+            cpu.FanSource = "HWiNFO";
+        }
+    }
+
+    private static void AppendHwinfoFans(List<FanInfo> fans, HwinfoCpuTelemetry hwinfo)
+    {
+        if (fans.Count == 0 && hwinfo.HasFan)
+        {
+            fans.Add(new FanInfo
+            {
+                Name = "CPU Fan",
+                Rpm = hwinfo.CpuFanRpm ?? 0,
+                SpeedPercent = hwinfo.CpuFanPercent
+            });
+        }
+
+        foreach (FanInfo f in hwinfo.AdditionalSystemFans)
+        {
+            if (!fans.Any(x => string.Equals(x.Name, f.Name, StringComparison.OrdinalIgnoreCase)))
+                fans.Add(f);
+        }
     }
 
     private static bool TryGetPhysicalMemory(out ulong totalBytes, out ulong availableBytes)

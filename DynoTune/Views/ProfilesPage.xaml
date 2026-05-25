@@ -3,12 +3,82 @@
     x:Class="DynoTune.Views.ProfilesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:DynoTune.Views"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Background="Transparent">
 
-    <Grid>
+    <Grid Padding="16" ColumnSpacing="12" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1.2*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
+        <TextBlock Grid.ColumnSpan="2" Text="Profiles" Style="{StaticResource TitleTextBlockStyle}"/>
+
+        <ListView Grid.Row="1"
+                  ItemsSource="{Binding Profiles}"
+                  SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
+                  DisplayMemberPath="Name"/>
+
+        <Border Grid.Row="1" Grid.Column="1"
+                Padding="12" CornerRadius="10"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="8">
+                <TextBlock Text="Profile Editor" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                <TextBox Header="Name" Text="{Binding SelectedProfile.Name, Mode=TwoWay}"/>
+                <ComboBox Header="Target Workload"
+                          ItemsSource="{Binding WorkloadClasses}"
+                          SelectedItem="{Binding SelectedProfile.TargetWorkload, Mode=TwoWay}"/>
+                <ComboBox Header="Power Plan"
+                          ItemsSource="{Binding PowerPlanOptions}"
+                          SelectedItem="{Binding SelectedProfile.PreferredPowerPlan, Mode=TwoWay}"/>
+                <NumberBox Header="GPU Power Limit %" Value="{Binding SelectedProfile.GpuPowerLimitPercent, Mode=TwoWay}"/>
+                <NumberBox Header="GPU Max Clock MHz" Value="{Binding SelectedProfile.GpuMaxClockMHz, Mode=TwoWay}"/>
+                <NumberBox Header="GPU Voltage mV" Value="{Binding SelectedProfile.GpuVoltageMv, Mode=TwoWay}"/>
+                <NumberBox Header="CPU PPT W" Value="{Binding SelectedProfile.CpuPptW, Mode=TwoWay}"/>
+
+                <Rectangle Height="1" Margin="0,4"
+                           Fill="{ThemeResource TextFillColorPrimaryBrush}" Opacity="0.1"/>
+                <TextBlock Text="CPU Windows Power Management"
+                           Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.65"/>
+                <NumberBox Header="CPU Min Frequency %"
+                           Value="{Binding SelectedProfile.CpuMinFrequencyPercent, Mode=TwoWay}"
+                           Minimum="0" Maximum="100" SpinButtonPlacementMode="Inline" SmallChange="5"/>
+                <NumberBox Header="CPU Max Frequency %"
+                           Value="{Binding SelectedProfile.CpuMaxFrequencyPercent, Mode=TwoWay}"
+                           Minimum="0" Maximum="100" SpinButtonPlacementMode="Inline" SmallChange="5"/>
+                <ComboBox Header="CPU Boost Mode"
+                          ItemsSource="{Binding BoostModeOptions}"
+                          SelectedItem="{Binding SelectedProfile.CpuBoostMode, Mode=TwoWay}"/>
+            </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding StatusText}" Opacity="0.7" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Refresh" Click="RefreshButton_Click"/>
+            <Button Grid.Column="2" Content="Set Active" Click="SetActiveButton_Click"/>
+            <Button Grid.Column="3" Content="Apply" Click="ApplyButton_Click"/>
+            <Button Grid.Column="4" Content="Duplicate" Click="DuplicateButton_Click"/>
+            <Button Grid.Column="5" Content="Delete" Click="DeleteButton_Click"/>
+            <Button Grid.Column="6" Content="Safe Fallback" Click="SafeFallbackButton_Click"/>
+        </Grid>
     </Grid>
 </Page>
